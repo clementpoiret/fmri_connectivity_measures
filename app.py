@@ -25,10 +25,13 @@ def is_url(s):
 def load_atlas(atlas_location=None, download_path=DEFAULT_DOWNLOAD_PATH):
     """Loading a provided atlas
     
+    Keyword Arguments:
+        atlas_location {str} -- path or url to the atlas (default: {None})
+        download_path {[type]} -- download path for the atlas(default: {'./downloaded_atlas.nii.gz'})
+    
     Returns:
         {Nibabel Image, list} -- Atlas's path and related labels
     """
-
     atlas_filename = ''
     labels = []
 
