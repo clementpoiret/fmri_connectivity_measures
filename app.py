@@ -65,7 +65,7 @@ def get_correlation_matrix(image,
 
     time_series = masker.fit_transform(image)
 
-    correlation_measure = ConnectivityMeasure(kind='correlation')
+    correlation_measure = ConnectivityMeasure(kind=kind)
     correlation_matrix = correlation_measure.fit_transform([time_series])[0]
 
     return correlation_matrix
