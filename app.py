@@ -1,10 +1,12 @@
 import getopt
 import pickle
 import sys
+import urllib.request
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import validators
 from nilearn import datasets, plotting
 from nilearn.connectome import ConnectivityMeasure
 from nilearn.image import load_img
@@ -13,17 +15,36 @@ from nilearn.input_data import NiftiMapsMasker
 #_path = './data/'
 DEFAULT_KIND = 'correlation'
 DEFAULT_FILTER = '**/*bandpassed*.nii.gz'
+DEFAULT_DOWNLOAD_PATH = './downloaded_atlas.nii.gz'
 
 
-def load_atlas():
+def is_url(s):
+    return False if not validators.url(s) else True
+
+
+def load_atlas(atlas_location=None, download_path=DEFAULT_DOWNLOAD_PATH):
     """Loading a provided atlas
     
     Returns:
         {Nibabel Image, list} -- Atlas's path and related labels
     """
-    atlas = datasets.fetch_atlas_msdl()
-    atlas_filename = atlas['maps']
-    labels = atlas['labels']
+
+    atlas_filename = ''
+    labels = []
+
+    if not atlas_location:
+        atlas = datasets.fetch_atlas_msdl()
+        atlas_filename = atlas['maps']
+        labels = atlas['labels']
+
+    else:
+        if is_url(atlas_location):
+            print('Beginning atlas download with urllib2...')
+            urllib.request.urlretrieve(atlas_location, download_path)
+
+            atlas_filename = download_path
+        else:
+            atlas_filename = atlas_location
 
     return (atlas_filename, labels)
 
@@ -89,21 +110,34 @@ def plot(correlation_matrix, labels):
 
 def main(argv):
     _path = ''
+    _atlas = ''
     _kind = ''
     _filter = ''
+    download_path = DEFAULT_DOWNLOAD_PATH
 
     try:
-        opts, args = getopt.getopt(argv, 'hp:k:f:',
-                                   ['path=', 'kind=', 'filter='])
+        opts, args = getopt.getopt(
+            argv, 'hp:a:d:k:f:',
+            ['path=', 'atlas=', 'downloadpath='
+             'kind=', 'filter='])
     except getopt.GetoptError:
-        print('app.py -p <path> -k <kind> -f <filter>')
+        print(
+            'app.py -p <path> -a <atlas> -d <downloadpath> -k <kind> -f <filter>'
+        )
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print('app.py -p <path> -k <kind> -f <filter>')
+            print(
+                'app.py -p <path> -a <atlas> -d <downloadpath> -k <kind> -f <filter>'
+            )
             sys.exit()
         elif opt in ('-p', '--path'):
             _path = arg
+        elif opt in ('-d', '--downloadpath'):
+            download_path = arg
+        elif opt in ('-a', '--atlas'):
+            print('Loading atlas...')
+            _atlas, labels = load_atlas(arg, download_path=download_path)
         elif opt in ('-k', '--kind'):
             _kind = arg
         elif opt in ('-f', '--filter'):
@@ -120,8 +154,9 @@ def main(argv):
     p = Path(_path)
     fmris = p.glob(_filter)
 
-    print('Loading atlas...')
-    atlas_filename, labels = load_atlas()
+    if not _atlas:
+        print('Loading atlas...')
+        _atlas, labels = load_atlas()
 
     matrices = {}
 
@@ -131,7 +166,7 @@ def main(argv):
         loaded_fmri = load_fmri(fmri)
 
         correlation_matrix = get_correlation_matrix(loaded_fmri,
-                                                    atlas_filename,
+                                                    _atlas,
                                                     standardize=True,
                                                     kind=_kind)
 
@@ -142,7 +177,7 @@ def main(argv):
             _kind, p / '{}_matrices.pkl'.format(_kind)))
         pickle.dump(matrices, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        #plot(correlation_matrix, labels)
+    #plot(correlation_matrix, labels)
 
     if not matrices:
         print('No .nii.gz file found. Please update path or filter.')

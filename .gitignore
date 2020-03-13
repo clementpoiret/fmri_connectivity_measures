@@ -116,4 +116,6 @@ dmypy.json
 
 ### Project Related ###
 *.pkl
+*.nii.gz
+*.nii
 data/
