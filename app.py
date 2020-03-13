@@ -111,7 +111,7 @@ def main(argv):
 
     if not _path:
         print(
-            'Arguement \'-p <path>\' required. Please provide a path containing .nii.gz files.'
+            'Arguement \'-p <path>\' required. Please provide a path containing .nii.gz files. Will check current folder.'
         )
 
     _kind = _kind or DEFAULT_KIND
@@ -145,7 +145,7 @@ def main(argv):
         #plot(correlation_matrix, labels)
 
     if not matrices:
-        print('No .nii.gz file found. Please provide change path or filter.')
+        print('No .nii.gz file found. Please update path or filter.')
 
 
 if __name__ == "__main__":
