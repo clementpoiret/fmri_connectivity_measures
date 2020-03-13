@@ -3,7 +3,8 @@
 Required packages:
 
 - Nibabel,
-- Nilearn.
+- Nilearn,
+- validators.
 
 To launch the script:
 
