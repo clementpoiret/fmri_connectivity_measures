@@ -119,6 +119,13 @@ def process_fmris(fmris, atlas, kind, subjects):
     subjects_list = pd.read_csv(subjects, header=None)
     for fmri in fmris:
         subject_id = [s for s in subjects_list[0] if s in str(fmri)]
+
+        if not subject_id:
+            print('Found fmri without corresponding ID. Skipping \'{}\''.format(
+                str(fmri)))
+            continue
+
+        print('Processing {}'.format(subject_id[0]))
         fmri = fmri.as_posix()
 
         loaded_fmri = load_fmri(fmri)

@@ -118,4 +118,5 @@ dmypy.json
 *.pkl
 *.nii.gz
 *.nii
+*.csv
 data/
