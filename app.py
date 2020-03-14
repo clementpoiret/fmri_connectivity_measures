@@ -5,6 +5,7 @@ import urllib.request
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import numpy as np
 import validators
 from nilearn import datasets, plotting
@@ -91,8 +92,9 @@ def get_correlation_matrix(image,
 
     correlation_measure = ConnectivityMeasure(kind=kind)
     correlation_matrix = correlation_measure.fit_transform([time_series])[0]
+    z_correlation_matrix = np.arctanh(correlation_matrix)
 
-    return correlation_matrix
+    return z_correlation_matrix
 
 
 def plot(correlation_matrix, labels):
@@ -116,22 +118,23 @@ def main(argv):
     _atlas = ''
     _kind = ''
     _filter = ''
+    _subjects = ''
     download_path = DEFAULT_DOWNLOAD_PATH
 
     try:
-        opts, args = getopt.getopt(
-            argv, 'hp:a:d:k:f:',
-            ['path=', 'atlas=', 'downloadpath='
-             'kind=', 'filter='])
+        opts, args = getopt.getopt(argv, 'hp:a:d:k:f:s:', [
+            'path=', 'atlas=', 'downloadpath='
+            'kind=', 'filter=', 'subjects='
+        ])
     except getopt.GetoptError:
         print(
-            'app.py -p <path> -a <atlas> -d <downloadpath> -k <kind> -f <filter>'
+            'app.py -p <path> -a <atlas> -d <downloadpath> -k <kind> -f <filter> -s <subjects>'
         )
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
             print(
-                'app.py -p <path> -a <atlas> -d <downloadpath> -k <kind> -f <filter>'
+                'app.py -p <path> -a <atlas> -d <downloadpath> -k <kind> -f <filter> -s <subjects>'
             )
             sys.exit()
         elif opt in ('-p', '--path'):
@@ -145,17 +148,23 @@ def main(argv):
             _kind = arg
         elif opt in ('-f', '--filter'):
             _filter = arg
+        elif opt in ('-s', '--subjects'):
+            _subjects = arg
 
     if not _path:
         print(
-            'Arguement \'-p <path>\' required. Please provide a path containing .nii.gz files. Will check current folder.'
+            'Argument \'-p <path>\' required. Please provide a path containing .nii.gz files. Will check current folder.'
         )
+
+    if not _subjects:
+        print('Please provide a text file containing the subjects IDs.')
+        raise ValueError
 
     _kind = _kind or DEFAULT_KIND
     _filter = _filter or DEFAULT_FILTER
 
     p = Path(_path)
-    fmris = p.glob(_filter)
+    fmris = sorted(p.glob(_filter))
 
     if not _atlas:
         print('Loading atlas...')
@@ -163,17 +172,19 @@ def main(argv):
 
     matrices = {}
 
+    subjects_list = pd.read_csv(_subjects, header=None)
     for fmri in fmris:
+        subject_id = [s for s in subjects_list[0] if s in str(fmri)]
         fmri = fmri.as_posix()
 
         loaded_fmri = load_fmri(fmri)
 
-        correlation_matrix = get_correlation_matrix(loaded_fmri,
-                                                    _atlas,
-                                                    standardize=True,
-                                                    kind=_kind)
+        z_correlation_matrix = get_correlation_matrix(loaded_fmri,
+                                                      _atlas,
+                                                      standardize=True,
+                                                      kind=_kind)
 
-        matrices[fmri] = correlation_matrix
+        matrices[subject_id[0]] = z_correlation_matrix
 
     with open(p / '{}_matrices.pkl'.format(_kind), 'wb') as handle:
         print('Saving {} matrices to \'{}\'...'.format(
