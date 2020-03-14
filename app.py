@@ -5,8 +5,8 @@ import urllib.request
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
+import pandas as pd
 import validators
 from nilearn import datasets, plotting
 from nilearn.connectome import ConnectivityMeasure
@@ -113,12 +113,39 @@ def plot(correlation_matrix, labels):
     plt.show()
 
 
+def process_fmris(fmris, atlas, kind, subjects):
+    matrices = {}
+
+    subjects_list = pd.read_csv(subjects, header=None)
+    for fmri in fmris:
+        subject_id = [s for s in subjects_list[0] if s in str(fmri)]
+        fmri = fmri.as_posix()
+
+        loaded_fmri = load_fmri(fmri)
+
+        z_correlation_matrix = get_correlation_matrix(loaded_fmri,
+                                                      atlas,
+                                                      standardize=True,
+                                                      kind=kind)
+
+        matrices[subject_id[0]] = z_correlation_matrix
+
+    return matrices
+
+
+def save_matrices(matrices, path, kind):
+    with open(path / '{}_matrices.pkl'.format(kind), 'wb') as handle:
+        print('Saving {} matrices to \'{}\'...'.format(
+            kind, path / '{}_matrices.pkl'.format(kind)))
+        pickle.dump(matrices, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
 def main(argv):
     _path = ''
-    _atlas = ''
-    _kind = ''
     _filter = ''
-    _subjects = ''
+    atlas = ''
+    kind = ''
+    subjects = ''
     download_path = DEFAULT_DOWNLOAD_PATH
 
     try:
@@ -143,58 +170,41 @@ def main(argv):
             download_path = arg
         elif opt in ('-a', '--atlas'):
             print('Loading atlas...')
-            _atlas, labels = load_atlas(arg, download_path=download_path)
+            atlas, labels = load_atlas(arg, download_path=download_path)
         elif opt in ('-k', '--kind'):
-            _kind = arg
+            kind = arg
         elif opt in ('-f', '--filter'):
             _filter = arg
         elif opt in ('-s', '--subjects'):
-            _subjects = arg
+            subjects = arg
 
     if not _path:
         print(
             'Argument \'-p <path>\' required. Please provide a path containing .nii.gz files. Will check current folder.'
         )
 
-    if not _subjects:
-        print('Please provide a text file containing the subjects IDs.')
+    if not subjects:
+        print('Please provide a csv file containing the subjects IDs.')
         raise ValueError
 
-    _kind = _kind or DEFAULT_KIND
+    kind = kind or DEFAULT_KIND
     _filter = _filter or DEFAULT_FILTER
 
     p = Path(_path)
     fmris = sorted(p.glob(_filter))
 
-    if not _atlas:
+    if not atlas:
         print('Loading atlas...')
-        _atlas, labels = load_atlas()
+        atlas, labels = load_atlas()
 
-    matrices = {}
-
-    subjects_list = pd.read_csv(_subjects, header=None)
-    for fmri in fmris:
-        subject_id = [s for s in subjects_list[0] if s in str(fmri)]
-        fmri = fmri.as_posix()
-
-        loaded_fmri = load_fmri(fmri)
-
-        z_correlation_matrix = get_correlation_matrix(loaded_fmri,
-                                                      _atlas,
-                                                      standardize=True,
-                                                      kind=_kind)
-
-        matrices[subject_id[0]] = z_correlation_matrix
-
-    with open(p / '{}_matrices.pkl'.format(_kind), 'wb') as handle:
-        print('Saving {} matrices to \'{}\'...'.format(
-            _kind, p / '{}_matrices.pkl'.format(_kind)))
-        pickle.dump(matrices, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    #plot(correlation_matrix, labels)
+    matrices = process_fmris(fmris, atlas, kind, subjects)
 
     if not matrices:
         print('No .nii.gz file found. Please update path or filter.')
+    else:
+        save_matrices(matrices, p, kind)
+
+    #plot(correlation_matrix, labels)
 
 
 if __name__ == "__main__":

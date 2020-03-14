@@ -8,15 +8,15 @@ Required packages:
 
 To launch the script:
 
-```python app.py -p <path> -a <atlas> -d <downloadpath> -k <kind> -f <filter>```
+```python app.py -p <path> -a <atlas> -d <downloadpath> -k <kind> -f <filter> -s <subjects>```
 
 Example:
 
-```python app.py -p './data/BIDS/' -a 'https://my_url.com/msdl_rois.nii' -d './msdl_atlas.nii' -k 'partial_correlation' -f '**/*bandpassed*.nii.gz'```
+```python app.py -p './data/BIDS/' -a 'https://my_url.com/msdl_rois.nii' -d './msdl_atlas.nii' -k 'partial_correlation' -f '**/*bandpassed*.nii.gz' -s './subjects.csv'```
 
 The above command will compute a partial correlation matrix for each `.nii.gz` file containing
 the word `bandpassed`, in the folder `./data/BIDS/`, including subfolders, using an atlas downloaded
-from `https://my_url.com/msdl_rois.nii` to `./msdl_atlas.nii`
+from `https://my_url.com/msdl_rois.nii` to `./msdl_atlas.nii`.
 
 Note that `-a` supports both local path and valid url.
 
@@ -24,3 +24,7 @@ Note that `-a` supports both local path and valid url.
 Default download location: `./downloaded_atlas.nii.gz`.
 
 When no atlas is specified, it defaults to MSDL.
+
+Each path should contain an unique identifier (in a folder or file name) for a given subject. Identifiers should be reported in `./subjects.csv` or any other specified csv file by `-s`.
+
+Matrices will be saved as values in a Dict, with IDs as keys, in a pickle file saved in `<path>/<kind>_matrices.pkl`.
