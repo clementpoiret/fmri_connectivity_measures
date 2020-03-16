@@ -1,8 +1,8 @@
-import getopt
+import argparse
 import pickle
-import sys
 import urllib.request
 from pathlib import Path
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -140,62 +140,33 @@ def process_fmris(fmris, atlas, kind, subjects):
     return matrices
 
 
-def save_matrices(matrices, path, kind):
-    with open(path / '{}_matrices.pkl'.format(kind), 'wb') as handle:
-        print('Saving {} matrices to \'{}\'...'.format(
-            kind, path / '{}_matrices.pkl'.format(kind)))
+def save_matrices(matrices, path, n_subjects, kinds):
+    _filename = '{}_{}subjects_{}.pkl'.format(
+        time.time_ns() // 1000000, n_subjects,
+        str([kind for kind in kinds
+            ]).strip('[]').replace(', ', '_').replace("'",
+                                                      '').replace(' ', '-'))
+
+    with open(path / _filename, 'wb') as handle:
+        print('Saving matrices to \'{}\'...'.format(path / _filename))
         pickle.dump(matrices, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def main(argv):
-    _path = ''
-    _filter = ''
-    atlas = ''
-    kind = ''
-    subjects = ''
-    download_path = DEFAULT_DOWNLOAD_PATH
+def main(args):
+    _path = args.path
+    _filter = args.filter
+    atlas = args.atlas
+    kinds = [kind for kind in args.kind.split(',')]
+    subjects = args.subjects
+    download_path = args.downloadpath
 
-    try:
-        opts, args = getopt.getopt(argv, 'hp:a:d:k:f:s:', [
-            'path=', 'atlas=', 'downloadpath='
-            'kind=', 'filter=', 'subjects='
-        ])
-    except getopt.GetoptError:
-        print(
-            'app.py -p <path> -a <atlas> -d <downloadpath> -k <kind> -f <filter> -s <subjects>'
-        )
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt == '-h':
-            print(
-                'app.py -p <path> -a <atlas> -d <downloadpath> -k <kind> -f <filter> -s <subjects>'
-            )
-            sys.exit()
-        elif opt in ('-p', '--path'):
-            _path = arg
-        elif opt in ('-d', '--downloadpath'):
-            download_path = arg
-        elif opt in ('-a', '--atlas'):
-            print('Loading atlas...')
-            atlas, labels = load_atlas(arg, download_path=download_path)
-        elif opt in ('-k', '--kind'):
-            kind = arg
-        elif opt in ('-f', '--filter'):
-            _filter = arg
-        elif opt in ('-s', '--subjects'):
-            subjects = arg
+    print('Loading atlas...')
+    atlas, labels = load_atlas(atlas, download_path=download_path)
 
     if not _path:
         print(
-            'Argument \'-p <path>\' required. Please provide a path containing .nii.gz files. Will check current folder.'
+            'Argument \'-p <path>\' suggested. Please provide a path containing .nii.gz files. Checking current folder...'
         )
-
-    if not subjects:
-        print('Please provide a csv file containing the subjects IDs.')
-        raise ValueError
-
-    kind = kind or DEFAULT_KIND
-    _filter = _filter or DEFAULT_FILTER
 
     p = Path(_path)
     fmris = sorted(p.glob(_filter))
@@ -204,15 +175,59 @@ def main(argv):
         print('Loading atlas...')
         atlas, labels = load_atlas()
 
-    matrices = process_fmris(fmris, atlas, kind, subjects)
+    matrices = {}
+    for kind in kinds:
+        print('Computing {}'.format(kind))
+        matrices[kind] = process_fmris(fmris, atlas, kind, subjects)
 
     if not matrices:
         print('No .nii.gz file found. Please update path or filter.')
     else:
-        save_matrices(matrices, p, kind)
+        save_matrices(matrices, p, len(matrices[kinds[0]]) + 1, kinds)
 
     #plot(correlation_matrix, labels)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='Computes connectivity matrices of fmris.')
+
+    parser.add_argument('-p',
+                        '--path',
+                        help='Path to a folder containing fMRI',
+                        default='',
+                        required=False)
+    parser.add_argument('-a',
+                        '--atlas',
+                        help='URL or Local Path to an atlas',
+                        required=False)
+    parser.add_argument(
+        '-d',
+        '--downloadpath',
+        help='Path with filename for the downloaded atlas. Default: {}'.format(
+            DEFAULT_DOWNLOAD_PATH),
+        default=DEFAULT_DOWNLOAD_PATH,
+        required=False)
+    parser.add_argument(
+        '-k',
+        '--kind',
+        help=
+        'Comma separated list of nilearn\'s kinds (e.g.: "partial correlation,correlation,tangent"). Default: "correlation"',
+        default=[DEFAULT_KIND],
+        type=str)
+    parser.add_argument(
+        '-f',
+        '--filter',
+        help='Regex filter to select fMRI. Default: "**/*bandpassed*.nii.gz"',
+        default=DEFAULT_FILTER,
+        required=False)
+    parser.add_argument(
+        '-s',
+        '--subjects',
+        help=
+        '<Required> Path to a csv file with an "ID" column. Every fmri should have its ID in its relative path',
+        required=True)
+
+    args = parser.parse_args()
+
+    main(args)
