@@ -69,7 +69,7 @@ def load_fmri(path):
 
 def get_correlation_matrix(image,
                            atlas_filename,
-                           standardize=True,
+                           standardize='zscore',
                            kind='correlation'):
     """Computes correlation matrix on a given nibabel image
     
@@ -78,23 +78,22 @@ def get_correlation_matrix(image,
         atlas_filename {str} -- Path to atlas
     
     Keyword Arguments:
-        standardize {bool} -- Standardize (default: {True})
+        standardize {str} -- Standardize (default: {'zscore'})
         kind {str} -- Nilearn's kind of Connectivity Measure (default: {'correlation'})
     
     Returns:
         {array} -- Correlation Matrix
     """
     masker = NiftiMapsMasker(maps_img=atlas_filename,
-                             standardize=True,
+                             standardize=standardize,
                              verbose=5)
 
     time_series = masker.fit_transform(image)
 
     correlation_measure = ConnectivityMeasure(kind=kind)
     correlation_matrix = correlation_measure.fit_transform([time_series])[0]
-    z_correlation_matrix = np.arctanh(correlation_matrix)
 
-    return z_correlation_matrix
+    return correlation_matrix
 
 
 def plot(correlation_matrix, labels):
@@ -130,12 +129,12 @@ def process_fmris(fmris, atlas, kind, subjects):
 
         loaded_fmri = load_fmri(fmri)
 
-        z_correlation_matrix = get_correlation_matrix(loaded_fmri,
-                                                      atlas,
-                                                      standardize=True,
-                                                      kind=kind)
+        correlation_matrix = get_correlation_matrix(loaded_fmri,
+                                                    atlas,
+                                                    standardize='zscore',
+                                                    kind=kind)
 
-        matrices[subject_id[0]] = z_correlation_matrix
+        matrices[subject_id[0]] = correlation_matrix
 
     return matrices
 
