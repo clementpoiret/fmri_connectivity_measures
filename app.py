@@ -14,7 +14,7 @@ from nilearn.image import load_img
 from nilearn.input_data import NiftiMapsMasker
 
 #_path = './data/'
-DEFAULT_KIND = 'correlation'
+DEFAULT_KIND = ['correlation', 'partial correlation', 'tangent']
 DEFAULT_FILTER = '**/*bandpassed*.nii.gz'
 DEFAULT_DOWNLOAD_PATH = './downloaded_atlas.nii.gz'
 
@@ -212,8 +212,8 @@ if __name__ == "__main__":
         '-k',
         '--kind',
         help=
-        'Comma separated list of nilearn\'s kinds (e.g.: "partial correlation,correlation,tangent"). Default: "correlation"',
-        default=[DEFAULT_KIND],
+        'Comma separated list of nilearn\'s kinds (e.g.: "partial correlation,correlation,tangent,covariance,precision"). Default: "correlation,partial correlation"',
+        default=DEFAULT_KIND,
         type=str)
     parser.add_argument(
         '-f',

@@ -12,7 +12,7 @@ usage: app.py [-h] [-p PATH] [-a ATLAS] [-d DOWNLOADPATH] [-k KIND]
 Computes connectivity matrices of fmris.
 
 ```
-optional arguments:
+arguments:
   -h, --help            show this help message and exit
   -p PATH, --path PATH  Path to a folder containing fMRI
   -a ATLAS, --atlas ATLAS
@@ -21,8 +21,8 @@ optional arguments:
                         Path with filename for the downloaded atlas. Default:
                         ./downloaded_atlas.nii.gz
   -k KIND, --kind KIND  Comma separated list of nilearn's kinds (e.g.:
-                        "partial correlation,correlation,tangent"). Default:
-                        "correlation"
+                        "partial correlation,correlation,tangent,covariance,pr
+                        ecision"). Default: "correlation,partial correlation"
   -f FILTER, --filter FILTER
                         Regex filter to select fMRI. Default:
                         "**/*bandpassed*.nii.gz"
