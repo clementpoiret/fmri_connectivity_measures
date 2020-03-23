@@ -120,3 +120,4 @@ dmypy.json
 *.nii
 *.csv
 data/
+test.py
