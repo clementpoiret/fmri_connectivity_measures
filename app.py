@@ -42,16 +42,14 @@ def load_atlas(atlas_location=None, download_path=DEFAULT_DOWNLOAD_PATH):
         download_path {[type]} -- download path for the atlas(default: {'./downloaded_atlas.nii.gz'})
     
     Returns:
-        {Nibabel Image, list} -- Atlas's path and related labels
+        {Nibabel Image} -- Atlas's path
     """
     print(f'{bcolors.OKBLUE}Loading atlas{bcolors.ENDC}')
     atlas_filename = ''
-    labels = []
 
     if not atlas_location:
         atlas = datasets.fetch_atlas_msdl()
         atlas_filename = atlas['maps']
-        labels = atlas['labels']
 
     else:
         if is_url(atlas_location):
@@ -64,7 +62,7 @@ def load_atlas(atlas_location=None, download_path=DEFAULT_DOWNLOAD_PATH):
         else:
             atlas_filename = atlas_location
 
-    return (atlas_filename, labels)
+    return atlas_filename
 
 
 def load_fmri(path):
@@ -140,15 +138,18 @@ def get_connectivity_matrices(time_series, subjects, kinds=DEFAULT_KINDS):
         {Numpy array} -- Connectivity matrices
     """
     matrices = {}
+    n_subjects = len(set(subjects))
 
     for kind in kinds:
-        if kind == 'tangent' and len(set(subjects)) < 2:
+        if kind == 'tangent' and n_subjects < 2:
             print(
                 f'{bcolors.FAIL}Tangent space parametrization can only be applied to a group of subjects, as it returns deviations to the mean. Skipping{bcolors.ENDC}'
             )
             continue
 
-        print(f'{bcolors.OKBLUE}Computing {kind}{bcolors.ENDC}')
+        print(
+            f'{bcolors.OKBLUE}Computing {kind} of {n_subjects} subjects{bcolors.ENDC}'
+        )
 
         connectivity_measures = ConnectivityMeasure(kind=kind)
 
@@ -160,22 +161,6 @@ def get_connectivity_matrices(time_series, subjects, kinds=DEFAULT_KINDS):
         }
 
     return matrices
-
-
-def plot(correlation_matrix, labels):
-    """Plot the correlation matrix
-    
-    Arguments:
-        correlation_matrix {array} -- Correlation Matrix
-        labels {list} -- Labels
-    """
-    np.fill_diagonal(correlation_matrix, 0)
-    plotting.plot_matrix(correlation_matrix,
-                         labels=labels,
-                         colorbar=True,
-                         vmax=0.8,
-                         vmin=-0.8)
-    plt.show()
 
 
 def save_matrices(matrices, path, n_subjects, kinds):
@@ -206,11 +191,21 @@ def main(args):
     _path = args.path
     _filter = args.filter
     atlas = args.atlas
+    regions = args.regions
     kinds = [kind for kind in args.kind.split(',')]
-    subjects = args.subjects
+    subjects_csvs = [csv for csv in args.subjects.split(',')]
     download_path = args.downloadpath
 
-    atlas, _ = load_atlas(atlas, download_path=download_path)
+    if atlas and regions:
+        raise ValueError(
+            f'{bcolors.FAIL}You provided both atlas and regions. Please provide only one of them.{bcolors.ENDC}'
+        )
+
+    if regions:
+        raise NotImplementedError(
+            f'{bcolors.FAIL}Autoatlas not yet implemented.{bcolors.ENDC}')
+    else:
+        atlas = load_atlas(atlas, download_path=download_path)
 
     if not _path:
         print(
@@ -225,7 +220,9 @@ def main(args):
             f'{bcolors.FAIL}No .nii.gz file found. Please provide a valid path.{bcolors.ENDC}'
         )
 
-    subjects_list = pd.read_csv(subjects, header=None)[0]
+    subjects_list = pd.concat(
+        (pd.read_csv(f) for f in subjects_csvs)).iloc[:, 0].reset_index(
+            drop=True)
 
     subjects_time_series, processed_subjects = extract_time_series(
         fmris=fmris,
@@ -242,8 +239,6 @@ def main(args):
 
     save_matrices(matrices, p, len(matrices[kinds[0]]), kinds)
 
-    #plot(correlation_matrix, labels)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -257,6 +252,10 @@ if __name__ == "__main__":
     parser.add_argument('-a',
                         '--atlas',
                         help='URL or Local Path to an atlas',
+                        required=False)
+    parser.add_argument('-r',
+                        '--regions',
+                        help='Local Path to a list of brain regions',
                         required=False)
     parser.add_argument(
         '-d',
@@ -282,8 +281,9 @@ if __name__ == "__main__":
         '-s',
         '--subjects',
         help=
-        '<Required> Path to a csv file with an "ID" column. Every fmri should have its ID in its relative path',
-        required=True)
+        '<Required> Path to a csv file or a list of csv files, with IDs in the first column. Every fmri should have its ID in its relative path',
+        required=True,
+        type=str)
 
     args = parser.parse_args()
 
