@@ -15,7 +15,7 @@ from nilearn.image import load_img
 from nilearn.input_data import NiftiMapsMasker
 
 DEFAULT_KINDS = ['correlation', 'partial correlation', 'tangent']
-DEFAULT_FILTER = '**/*.nii.gz'
+DEFAULT_FILTER = '**/*[!MIST]*.nii.gz'
 DEFAULT_DOWNLOAD_PATH = './downloaded_atlas.nii.gz'
 REGIONS_URL = 'https://raw.githubusercontent.com/clementpoiret/fmri_connectivity_measures/master/files/regions.csv'
 MIST_BASE_URL = 'https://github.com/clementpoiret/fmri_connectivity_measures/raw/master/files/MIST/'
