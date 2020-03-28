@@ -116,8 +116,5 @@ dmypy.json
 
 ### Project Related ###
 *.pkl
-*.nii.gz
-*.nii
-*.csv
 data/
 test.py
