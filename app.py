@@ -1,10 +1,11 @@
 import argparse
+import os
 import pickle
+import time
 import urllib.request
 from pathlib import Path
-import time
 
-import matplotlib.pyplot as plt
+import nibabel as nib
 import numpy as np
 import pandas as pd
 import validators
@@ -13,10 +14,11 @@ from nilearn.connectome import ConnectivityMeasure
 from nilearn.image import load_img
 from nilearn.input_data import NiftiMapsMasker
 
-#_path = './data/'
 DEFAULT_KINDS = ['correlation', 'partial correlation', 'tangent']
 DEFAULT_FILTER = '**/*bandpassed*.nii.gz'
 DEFAULT_DOWNLOAD_PATH = './downloaded_atlas.nii.gz'
+REGIONS_URL = 'https://raw.githubusercontent.com/clementpoiret/fmri_connectivity_measures/master/files/regions.csv'
+MIST_BASE_URL = 'https://github.com/clementpoiret/fmri_connectivity_measures/raw/master/files/MIST/'
 
 
 class bcolors:
@@ -28,6 +30,91 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
+
+def download_regions():
+    """Download regions location
+    """
+    if not os.path.exists('files'):
+        os.mkdir('files')
+
+    print(f'{bcolors.OKBLUE}Updating regions{bcolors.ENDC}')
+    urllib.request.urlretrieve(REGIONS_URL, 'files/regions.csv')
+
+
+def download_mist(resolutions):
+    """Download specific resolutions of the MIST atlas
+    
+    Arguments:
+        resolutions {list} -- List of resolutions
+    """
+    if not os.path.exists('files/MIST/'):
+        os.makedirs('files/MIST/')
+
+    for resolution in resolutions:
+        if not os.path.exists(f'files/MIST/{resolution}.nii.gz'):
+            url = MIST_BASE_URL + resolution + '.nii.gz'
+            print(
+                f'{bcolors.OKBLUE}Downloading {resolution} from {url}{bcolors.ENDC}'
+            )
+            urllib.request.urlretrieve(url, f'files/MIST/{resolution}.nii.gz')
+        else:
+            print(
+                f'{bcolors.OKBLUE}{resolution} already downloaded{bcolors.ENDC}'
+            )
+
+
+def get_regions_locations(regions):
+    """Get regions locations from name
+    
+    Arguments:
+        regions {list} -- list of MIST's regions
+    
+    Returns:
+        {list} -- Regions' locations and relative atlases
+    """
+    regions_locator = pd.read_csv('files/regions.csv', index_col='name')
+
+    locations = np.array(
+        [regions_locator.loc[region].values[0] for region in regions])
+    print(
+        f'{bcolors.OKBLUE}Got {len(locations)} regions from {len(set(locations[:, 1]))} atlases{bcolors.ENDC}'
+    )
+
+    return locations
+
+
+def autoatlas(locations):
+    """Computes a new atlas
+    
+    Arguments:
+        locations {array} -- Output of get_regions_locations()
+    
+    Returns:
+        {str} -- Path to the new atlas
+    """
+    required_atlases = set(locations[:, 1])
+    download_mist(required_atlases)
+
+    regions = []
+    for value, resolution in locations:
+        mist_path = f'files/MIST/{resolution}.nii.gz'
+        mist = nib.load(mist_path)
+        region = (mist.get_fdata() == value) * 1
+
+        region_img = nib.Nifti1Image(region, affine=mist.affine)
+        regions.append(region_img)
+
+    atlas = nib.concat_images(regions)
+    filename = '{}_autoatlas_{}regions.nii'.format(time.time_ns() // 1000000,
+                                                   atlas.shape[-1])
+    nib.save(atlas, filename)
+
+    print(
+        f'{bcolors.OKGREEN}Success! Autoatlas saved to {filename}{bcolors.ENDC}'
+    )
+
+    return filename
 
 
 def is_url(s):
@@ -202,8 +289,13 @@ def main(args):
         )
 
     if regions:
-        raise NotImplementedError(
-            f'{bcolors.FAIL}Autoatlas not yet implemented.{bcolors.ENDC}')
+        download_regions()
+
+        regions = pd.read_csv(regions, header=None).to_numpy()
+
+        locations = get_regions_locations(regions)
+
+        atlas = autoatlas(locations)
     else:
         atlas = load_atlas(atlas, download_path=download_path)
 
