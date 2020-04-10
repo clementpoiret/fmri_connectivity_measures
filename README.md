@@ -4,10 +4,19 @@ Required packages:
 
 - Nibabel,
 - Nilearn,
+- Scikit Learn,
 - validators.
 
 usage: app.py [-h] [-p PATH] [-a ATLAS] [-r REGIONS] [-d DOWNLOADPATH]
               [-k KIND] [-f FILTER] -s SUBJECTS
+
+Currently supported connectivity measures:
+
+- correlation,
+- partial correlation,
+- tangent,
+- covariance,
+- precision.
 
 Computes connectivity matrices of fmris.
 

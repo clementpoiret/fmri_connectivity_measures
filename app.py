@@ -32,12 +32,15 @@ from nilearn import datasets, plotting
 from nilearn.connectome import ConnectivityMeasure
 from nilearn.image import load_img
 from nilearn.input_data import NiftiMapsMasker
+from sklearn.covariance import GraphicalLassoCV
 
 DEFAULT_KINDS = ['correlation', 'partial correlation', 'tangent']
 DEFAULT_FILTER = '**/*[!MIST]*.nii.gz'
 DEFAULT_DOWNLOAD_PATH = './downloaded_atlas.nii.gz'
 REGIONS_URL = 'https://raw.githubusercontent.com/clementpoiret/fmri_connectivity_measures/master/files/regions.csv'
 MIST_BASE_URL = 'https://github.com/clementpoiret/fmri_connectivity_measures/raw/master/files/MIST/'
+NILEARN_KINDS = ['correlation', 'partial correlation', 'tangent']
+SKLEARN_KINDS = ['covariance', 'precision']
 
 
 class bcolors:
@@ -247,24 +250,44 @@ def get_connectivity_matrices(time_series, subjects, kinds=DEFAULT_KINDS):
     n_subjects = len(set(subjects))
 
     for kind in kinds:
-        if kind == 'tangent' and n_subjects < 2:
-            print(
-                f'{bcolors.FAIL}Tangent space parametrization can only be applied to a group of subjects, as it returns deviations to the mean. Skipping{bcolors.ENDC}'
-            )
-            continue
-
         print(
             f'{bcolors.OKBLUE}Computing {kind} of {n_subjects} subjects{bcolors.ENDC}'
         )
 
-        connectivity_measures = ConnectivityMeasure(kind=kind)
+        if kind in NILEARN_KINDS:
+            if kind == 'tangent' and n_subjects < 2:
+                print(
+                    f'{bcolors.FAIL}Tangent space parametrization can only be applied to a group of subjects, as it returns deviations to the mean. Skipping{bcolors.ENDC}'
+                )
+                continue
 
-        connectivity_matrices = connectivity_measures.fit_transform(time_series)
+            connectivity_measures = ConnectivityMeasure(kind=kind)
 
-        matrices[kind] = {
-            subjects[i]: connectivity_matrices[i]
-            for i in range(connectivity_matrices.shape[0])
-        }
+            connectivity_matrices = connectivity_measures.fit_transform(
+                time_series)
+
+            matrices[kind] = {
+                subjects[i]: connectivity_matrices[i]
+                for i in range(connectivity_matrices.shape[0])
+            }
+
+        if kind in SKLEARN_KINDS:
+
+            for i, subject in enumerate(subjects):
+                estimator = GraphicalLassoCV()
+                estimator = estimator.fit(time_series[i])
+
+                matrix = None
+                if kind == 'covariance':
+                    matrix = estimator.covariance_
+
+                if kind == 'precision':
+                    matrix = estimator.precision_
+
+                if not kind in matrices:
+                    matrices[kind] = {}
+
+                matrices[kind][subject] = matrix
 
     return matrices
 
