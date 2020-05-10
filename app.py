@@ -1,5 +1,5 @@
 """ 
-    Computes connectivity matrices of fmris for a given list of briain
+    Computes connectivity matrices of fmris for a given list of brain
     regions.
     Copyright (C) 2020 Clément POIRET
 
@@ -119,7 +119,7 @@ def autoatlas(locations):
     download_mist(required_atlases)
 
     regions = []
-    for value, resolution in locations:
+    for value, resolution, _, _, _ in locations:
         mist_path = f'files/MIST/{resolution}.nii.gz'
         mist = nib.load(mist_path)
         region = (mist.get_fdata() == value) * 1
