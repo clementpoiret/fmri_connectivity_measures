@@ -16,7 +16,8 @@ Currently supported connectivity measures:
 - partial correlation,
 - tangent,
 - covariance,
-- precision.
+- precision,
+- power predictive score.
 
 Computes connectivity matrices of fmris.
 

@@ -27,6 +27,7 @@ from pathlib import Path
 import nibabel as nib
 import numpy as np
 import pandas as pd
+import ppscore as pps
 import validators
 from nilearn import datasets, plotting
 from nilearn.connectome import ConnectivityMeasure
@@ -289,6 +290,17 @@ def get_connectivity_matrices(time_series, subjects, kinds=DEFAULT_KINDS):
 
                 matrices[kind][subject] = matrix
 
+        if kind == 'pps':
+            for i, subject in enumerate(subjects):
+                ts = pd.DataFrame(time_series[i])
+                matrix = pps.matrix(ts, task='regression')
+                np.fill_diagonal(matrix, 1)
+
+                if not kind in matrices:
+                    matrices[kind] = {}
+
+                matrices[kind][subject] = matrix.values
+
     return matrices
 
 
@@ -355,8 +367,8 @@ def main(args):
         )
 
     subjects_list = pd.concat(
-        (pd.read_csv(f) for f in subjects_csvs)).iloc[:, 0].reset_index(
-            drop=True)
+        (pd.read_csv(f) for f in subjects_csvs)).iloc[:,
+                                                      0].reset_index(drop=True)
 
     subjects_time_series, processed_subjects = extract_time_series(
         fmris=fmris,
