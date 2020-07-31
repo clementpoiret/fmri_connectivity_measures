@@ -312,8 +312,10 @@ def get_connectivity_matrices(time_series, subjects, kinds=DEFAULT_KINDS):
         if kind == 'pps':
             for i, subject in enumerate(subjects):
                 ts = pd.DataFrame(time_series[i])
-                matrix = pps.matrix(ts, task='regression')
-                np.fill_diagonal(matrix, 1)
+                matrix = pps.matrix(ts)
+                matrix = matrix[['x', 'y', 'ppscore']].pivot(columns='x',
+                                                             index='y',
+                                                             values='ppscore')
 
                 if not kind in matrices:
                     matrices[kind] = {}
@@ -323,7 +325,7 @@ def get_connectivity_matrices(time_series, subjects, kinds=DEFAULT_KINDS):
     return matrices
 
 
-def save_matrices(matrices, path, n_subjects, kinds):
+def save_matrices(matrices, path, n_subjects, kinds, prefix=''):
     """[summary]
     
     Arguments:
@@ -332,8 +334,8 @@ def save_matrices(matrices, path, n_subjects, kinds):
         n_subjects {[type]} -- [description]
         kinds {[type]} -- [description]
     """
-    _filename = '{}_{}subjects_{}.pkl'.format(
-        time.time_ns() // 1000000, n_subjects,
+    _filename = '{}{}_{}subjects_{}.pkl'.format(
+        time.time_ns() // 1000000, prefix, n_subjects,
         str([kind for kind in kinds
             ]).strip('[]').replace(', ', '_').replace("'",
                                                       '').replace(' ', '-'))
@@ -411,7 +413,11 @@ def main(args):
         kinds=kinds,
     )
 
-    save_matrices(matrices, p, len(matrices[kinds[0]]), kinds)
+    save_matrices(matrices,
+                  p,
+                  len(matrices[kinds[0]]),
+                  kinds,
+                  prefix=args.atlas)
 
 
 if __name__ == "__main__":
