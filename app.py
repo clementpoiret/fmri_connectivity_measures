@@ -108,7 +108,7 @@ def get_regions_locations(regions):
     return locations
 
 
-def autoatlas(locations):
+def autoatlas(locations, filename=None):
     """Computes a new atlas
     
     Arguments:
@@ -130,8 +130,12 @@ def autoatlas(locations):
         regions.append(region_img)
 
     atlas = nib.concat_images(regions)
-    filename = '{}_autoatlas_{}regions.nii'.format(time.time_ns() // 1000000,
-                                                   atlas.shape[-1])
+    if not filename:
+        filename = '{}_autoatlas_{}regions.nii'.format(
+            time.time_ns() // 1000000, atlas.shape[-1])
+    else:
+        filename = '{}_{}regions.nii'.format(filename, atlas.shape[-1])
+
     nib.save(atlas, filename)
 
     print(
@@ -170,6 +174,18 @@ def load_atlas(atlas_location=None, download_path=DEFAULT_DOWNLOAD_PATH):
             urllib.request.urlretrieve(atlas_location, download_path)
 
             atlas_filename = download_path
+        elif 'MIST' in atlas_location:
+            print(
+                f'{bcolors.OKBLUE}Converting {atlas_location}...{bcolors.ENDC}')
+            download_regions()
+
+            regions = pd.read_csv('files/regions.csv')
+            regions = regions[regions.base == atlas_location].name.to_numpy()
+            regions = regions.reshape(-1, 1)
+
+            locations = get_regions_locations(regions)
+
+            atlas_filename = autoatlas(locations, filename=atlas_location)
         else:
             atlas_filename = atlas_location
 
