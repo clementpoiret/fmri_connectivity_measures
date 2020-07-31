@@ -36,7 +36,8 @@ from nilearn.input_data import NiftiMapsMasker
 from sklearn.covariance import GraphicalLassoCV
 
 DEFAULT_KINDS = ['correlation', 'partial correlation', 'tangent']
-DEFAULT_FILTER = '**/*[!MIST]*.nii.gz'
+DEFAULT_FILTER = '**/*.nii.gz'
+DEFAULT_CONFOUNDS_FILTER = '**/*reducedConfound*.tsv'
 DEFAULT_DOWNLOAD_PATH = './downloaded_atlas.nii.gz'
 REGIONS_URL = 'https://raw.githubusercontent.com/clementpoiret/fmri_connectivity_measures/master/files/regions.csv'
 MIST_BASE_URL = 'https://github.com/clementpoiret/fmri_connectivity_measures/raw/master/files/MIST/'
@@ -192,6 +193,7 @@ def load_fmri(path):
 def extract_time_series(fmris,
                         subjects_list,
                         atlas,
+                        confounds=None,
                         standardize=True,
                         verbose=5):
     """Extracting time series from a list of fmris
@@ -202,6 +204,7 @@ def extract_time_series(fmris,
         atlas {str} -- Path to atlas
     
     Keyword Arguments:
+        confounds {list<String>} -- List of confound's path (default: {None})
         standardize {bool} -- Standardize time series (default: {True})
         verbose {int} -- Verbosity (default: {5})
     
@@ -227,7 +230,7 @@ def extract_time_series(fmris,
         masker = NiftiMapsMasker(maps_img=atlas,
                                  standardize=standardize,
                                  verbose=verbose)
-        time_series = masker.fit_transform(img)
+        time_series = masker.fit_transform(img, confounds=confounds)
 
         subjects_time_series.append(time_series)
 
@@ -331,6 +334,8 @@ def save_matrices(matrices, path, n_subjects, kinds):
 def main(args):
     _path = args.path
     _filter = args.filter
+    _confounds_filter = args.confoundsfilter
+    _confounds_path = args.confoundspath
     atlas = args.atlas
     regions = args.regions
     kinds = [kind for kind in args.kind.split(',')]
@@ -370,10 +375,17 @@ def main(args):
         (pd.read_csv(f) for f in subjects_csvs)).iloc[:,
                                                       0].reset_index(drop=True)
 
+    confounds = None
+    if (_confounds_path):
+        p = Path(_confounds_path)
+        confounds = sorted(p.glob(_confounds_filter))
+        confounds = [c.as_posix() for c in confounds]
+
     subjects_time_series, processed_subjects = extract_time_series(
         fmris=fmris,
         subjects_list=subjects_list,
         atlas=atlas,
+        confounds=confounds,
         standardize=True,
         verbose=5)
 
@@ -422,6 +434,18 @@ if __name__ == "__main__":
         '--filter',
         help='Regex filter to select fMRI. Default: "**/*.nii.gz"',
         default=DEFAULT_FILTER,
+        required=False)
+    parser.add_argument('-c',
+                        '--confoundspath',
+                        help='Path to a folder containing fMRI\'s confounds',
+                        default=None,
+                        required=False)
+    parser.add_argument(
+        '-o',
+        '--confoundsfilter',
+        help=
+        'Regex filter to select fMRI\'confounds. Default: "**/*reducedConfound*.tsv"',
+        default=DEFAULT_CONFOUNDS_FILTER,
         required=False)
     parser.add_argument(
         '-s',
