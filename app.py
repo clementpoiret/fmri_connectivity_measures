@@ -32,7 +32,7 @@ import validators
 from nilearn import datasets, plotting
 from nilearn.connectome import ConnectivityMeasure
 from nilearn.image import load_img
-from nilearn.input_data import NiftiMapsMasker
+from nilearn.input_data import NiftiLabelsMasker, NiftiMapsMasker
 from sklearn.covariance import GraphicalLassoCV
 
 DEFAULT_KINDS = ['correlation', 'partial correlation', 'tangent']
@@ -175,17 +175,11 @@ def load_atlas(atlas_location=None, download_path=DEFAULT_DOWNLOAD_PATH):
 
             atlas_filename = download_path
         elif 'MIST' in atlas_location:
-            print(
-                f'{bcolors.OKBLUE}Converting {atlas_location}...{bcolors.ENDC}')
-            download_regions()
+            print(f'{bcolors.OKBLUE}Getting MIST atlases...{bcolors.ENDC}')
 
-            regions = pd.read_csv('files/regions.csv')
-            regions = regions[regions.base == atlas_location].name.to_numpy()
-            regions = regions.reshape(-1, 1)
-
-            locations = get_regions_locations(regions)
-
-            atlas_filename = autoatlas(locations, filename=atlas_location)
+            atlas = datasets.fetch_atlas_basc_multiscale_2015(version='sym')
+            atlas_filename = atlas['scale{}'.format(
+                atlas_location.split('_')[1].zfill(3))]
         else:
             atlas_filename = atlas_location
 
@@ -243,9 +237,17 @@ def extract_time_series(fmris,
         processed_subjects.append(subject_id[0])
 
         img = load_img(fmri.as_posix())
-        masker = NiftiMapsMasker(maps_img=atlas,
-                                 standardize=standardize,
-                                 verbose=verbose)
+
+        masker = None
+        if not 'basc' in atlas:
+            masker = NiftiMapsMasker(maps_img=atlas,
+                                     standardize=standardize,
+                                     verbose=verbose)
+        else:
+            masker = NiftiLabelsMasker(labels_img=atlas,
+                                       standardize=standardize,
+                                       verbose=verbose)
+
         time_series = masker.fit_transform(img, confounds=confounds)
 
         subjects_time_series.append(time_series)
