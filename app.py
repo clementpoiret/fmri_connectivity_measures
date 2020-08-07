@@ -235,7 +235,7 @@ def extract_time_series(fmris,
             continue
 
         print(
-            f'{bcolors.OKBLUE}Loading {subject_id[0]}; Using confound {confounds[0]}{bcolors.ENDC}'
+            f'{bcolors.OKBLUE}Loading {subject_id[0]}; Using confound {confounds[i]}{bcolors.ENDC}'
         )
         processed_subjects.append(subject_id[0])
 
