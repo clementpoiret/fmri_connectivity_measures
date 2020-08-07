@@ -224,8 +224,9 @@ def extract_time_series(fmris,
     subjects_time_series = []
     processed_subjects = []
 
-    for fmri in fmris:
-        subject_id = [s for s in subjects_list if s in str(fmri)]
+    for i, fmri in enumerate(fmris):
+        subject_id = [s for s in subjects_list if str(s) in str(fmri)]
+        assert str(subject_id[0]) in confounds[i]
 
         if not subject_id:
             print(
@@ -233,7 +234,9 @@ def extract_time_series(fmris,
             )
             continue
 
-        print(f'{bcolors.OKBLUE}Loading {subject_id[0]}{bcolors.ENDC}')
+        print(
+            f'{bcolors.OKBLUE}Loading {subject_id[0]}; Using confound {confounds[0]}{bcolors.ENDC}'
+        )
         processed_subjects.append(subject_id[0])
 
         img = load_img(fmri.as_posix())
@@ -248,7 +251,7 @@ def extract_time_series(fmris,
                                        standardize=standardize,
                                        verbose=verbose)
 
-        time_series = masker.fit_transform(img, confounds=confounds)
+        time_series = masker.fit_transform(img, confounds=confounds[i])
 
         subjects_time_series.append(time_series)
 
